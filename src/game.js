@@ -1,4 +1,4 @@
-import { ActionManager, Color3, Color4, FollowCamera, FreeCamera, HavokPlugin, HemisphericLight, InterpolateValueAction, KeyboardEventTypes, Mesh, MeshBuilder, ParticleSystem, PhysicsAggregate, PhysicsHelper, PhysicsMotionType, PhysicsRadialImpulseFalloff, PhysicsShapeType, Scene, SetValueAction, ShadowGenerator, SpotLight, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
+import { ActionManager, Color3, Color4, Engine, FollowCamera, FreeCamera, HavokPlugin, HemisphericLight, InterpolateValueAction, KeyboardEventTypes, Mesh, MeshBuilder, ParticleSystem, PhysicsAggregate, PhysicsHelper, PhysicsMotionType, PhysicsRadialImpulseFalloff, PhysicsShapeType, Scene, SetValueAction, ShadowGenerator, SpotLight, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
 import { Inspector } from '@babylonjs/inspector';
 import HavokPhysics from "@babylonjs/havok";
 
@@ -7,8 +7,9 @@ import floorBumpUrl from "../assets/textures/floor_bump.png";
 import Player from "./player";
 import Arena from "./arena";
 import CurlingStone from "./curlingStone";
-import { GlobalManager } from "./globalmanager";
+import { GlobalManager, States } from "./globalmanager";
 import { InputController } from "./inputcontroller";
+import { SoundManager } from "./soundmanager";
 
 class Game {
 
@@ -39,7 +40,8 @@ class Game {
     }
 
     async start() {
-        await this.initGame()
+        await this.initGame();
+        GlobalManager.gameState = States.STATE_MENU;
         this.gameLoop();
         this.endGame();
     }
@@ -133,12 +135,15 @@ class Game {
 
     async initGame() {
 
+        GlobalManager.gameState = States.STATE_INIT;
+
         this.#havokInstance = await this.getInitializedHavok();
         GlobalManager.scene = new Scene(this.#engine);
         GlobalManager.scene.collisionsEnabled = true;
 
-        InputController.init();
 
+        InputController.init();
+        await SoundManager.init();
         this.createScene();
 
         this.#player = new Player(3, 2, 3);
@@ -153,6 +158,8 @@ class Game {
         this.#curlingStone = new CurlingStone(0, 1, 0, this.scene);
         await this.#curlingStone.init();
         GlobalManager.addShadowCaster(this.#curlingStone.gameObject);
+
+        SoundManager.playMusic(SoundManager.Musics.START_MUSIC);
     }
 
 
@@ -165,8 +172,28 @@ class Game {
         const divFps = document.getElementById("fps");
         this.#engine.runRenderLoop(() => {
 
-            this.updateGame();
+            InputController.update();
+            SoundManager.update();
+            GlobalManager.update();
 
+            switch (GlobalManager.gameState) {
+                case States.STATE_MENU:
+                    GlobalManager.gameState = States.STATE_START_GAME;
+                    break;
+                case States.STATE_START_GAME:
+                    GlobalManager.gameState = States.STATE_NEW_LEVEL;
+                    break;
+                case States.STATE_NEW_LEVEL:
+                    GlobalManager.gameState = States.STATE_LEVEL_READY;
+                    break;
+                case States.STATE_LEVEL_READY:
+                    GlobalManager.gameState = States.STATE_RUNNING;
+                    break;
+
+                case States.STATE_RUNNING:
+                    this.updateGame();
+                    break;
+            }
 
             //Debug
             if (InputController.actions["KeyI"]) {
@@ -188,9 +215,9 @@ class Game {
 
         let delta = this.#engine.getDeltaTime() / 1000.0;
 
-        
+
         this.#player.update(InputController.inputMap, InputController.actions, delta);
-        
+
         this.#curlingStone.update(delta);
 
         this.#arena.update(delta);

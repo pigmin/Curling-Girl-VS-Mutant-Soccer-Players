@@ -2,6 +2,7 @@ import { Matrix, Mesh, MeshBuilder, Physics6DoFConstraint, PhysicsAggregate, Phy
 
 import girlModelUrl from "../assets/models/girl1.glb";
 import { GlobalManager } from "./globalmanager";
+import { SoundManager } from "./soundmanager";
 
 const USE_FORCES = true;
 let RUNNING_SPEED = 8;
@@ -122,6 +123,7 @@ class Player {
         if (USE_FORCES) {
 
             if (actions["Space"] && currentVelocity.y == 0) {
+                SoundManager.playSound(0);
                 //Avec la physique il va falloir tester notre distance par rapport au sol (raycast) et si on chute ou pas
                 // pour l'instant on autorise le saut
                 this.capsuleAggregate.body.applyImpulse(new Vector3(0, JUMP_IMPULSE, 0), Vector3.Zero());

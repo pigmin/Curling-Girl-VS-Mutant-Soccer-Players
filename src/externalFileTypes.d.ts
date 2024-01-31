@@ -12,6 +12,7 @@ declare module '*.stl';
 declare module '*.wav';
 declare module '*.mp3';
 declare module '*.mp4';
+declare module '*.ogg';
 
 // Others (js ..)
 declare module '*.json';
