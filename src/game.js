@@ -151,13 +151,14 @@ class Game {
         this.#gameCamera.lockedTarget = this.#player.transform;
         GlobalManager.addShadowCaster(this.#player.gameObject, true);
 
-        this.#arena = new Arena(0, 0, 0);
-        await this.#arena.init();
-        GlobalManager.addShadowCaster(this.#arena.gameObject, true);
-
         this.#curlingStone = new CurlingStone(0, 1, 0, this.scene);
         await this.#curlingStone.init();
         GlobalManager.addShadowCaster(this.#curlingStone.gameObject);
+
+        this.#arena = new Arena(0, 0, 0);
+        await this.#arena.init();
+        GlobalManager.addShadowCaster(this.#arena.gameObject, true);
+        this.#arena.setCollisionZones(this.#curlingStone.gameObject);
 
         SoundManager.playMusic(SoundManager.Musics.START_MUSIC);
     }
@@ -172,9 +173,11 @@ class Game {
         const divFps = document.getElementById("fps");
         this.#engine.runRenderLoop(() => {
 
-            InputController.update();
-            SoundManager.update();
-            GlobalManager.update();
+            let delta = this.#engine.getDeltaTime() / 1000.0;
+
+            InputController.update(delta);
+            SoundManager.update(delta);
+            GlobalManager.update(delta);
 
             switch (GlobalManager.gameState) {
                 case States.STATE_MENU:
@@ -191,7 +194,7 @@ class Game {
                     break;
 
                 case States.STATE_RUNNING:
-                    this.updateGame();
+                    this.updateGame(delta);
                     break;
             }
 
@@ -211,12 +214,12 @@ class Game {
         });
     }
 
-    updateGame() {
-
-        let delta = this.#engine.getDeltaTime() / 1000.0;
+    updateGame(delta) {
 
 
-        this.#player.update(InputController.inputMap, InputController.actions, delta);
+
+
+        this.#player.update(delta);
 
         this.#curlingStone.update(delta);
 

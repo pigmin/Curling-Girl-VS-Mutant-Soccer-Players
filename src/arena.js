@@ -1,7 +1,7 @@
-import { Color3, MeshBuilder, PhysicsAggregate, PhysicsMotionType, PhysicsShape, PhysicsShapeType, SceneLoader, StandardMaterial, TransformNode, Vector3 } from "@babylonjs/core";
+import { ActionManager, Color3, ExecuteCodeAction, MeshBuilder, PhysicsAggregate, PhysicsMotionType, PhysicsShape, PhysicsShapeType, SceneLoader, StandardMaterial, TransformNode, Vector3 } from "@babylonjs/core";
 
 import arenaModelUrl from "../assets/models/ice_hockey.glb";
-import { GlobalManager } from "./globalmanager";
+import { GlobalManager, PhysMasks } from "./globalmanager";
 
 class Arena {
 
@@ -43,6 +43,7 @@ class Arena {
             if (childMesh.getTotalVertices() > 0) {
                 const meshAggregate = new PhysicsAggregate(childMesh, PhysicsShapeType.MESH, {mass:0, friction: 0.4, restitution : 0.1});
                 meshAggregate.body.setMotionType(PhysicsMotionType.STATIC);
+                meshAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
                 childMesh.receiveShadows = true;
            }
         }
@@ -62,7 +63,35 @@ class Arena {
         //zoneMatB.alpha = 0.5;
         this.zoneB.material = zoneMatB;
         this.zoneB.position = new Vector3(0, 0.1, -27.5);
-        
+
+
+    }
+
+    setCollisionZones(culingMesh) {
+        this.zoneA.actionManager = new ActionManager(GlobalManager.scene);
+        this.zoneA.actionManager.registerAction(
+            new ExecuteCodeAction(
+                {
+                    trigger: ActionManager.OnIntersectionEnterTrigger, 
+                    parameter: culingMesh,
+                }, 
+                (actionEv) => {
+                    console.log(actionEv);
+                }
+            )
+        );
+        this.zoneB.actionManager = new ActionManager(GlobalManager.scene);
+        this.zoneB.actionManager.registerAction(
+            new ExecuteCodeAction(
+                {
+                    trigger: ActionManager.OnIntersectionEnterTrigger, 
+                    parameter: culingMesh,
+                }, 
+                (actionEv) => {
+                    console.log(actionEv);
+                }
+            )
+        );        
     }
 
     update(delta) {

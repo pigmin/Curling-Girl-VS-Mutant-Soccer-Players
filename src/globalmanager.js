@@ -16,6 +16,13 @@ export const States = Object.freeze({
     STATE_END: 100,
 });
 
+export const PhysMasks = Object.freeze({
+    PHYS_MASK_PLAYER : 1,
+    PHYS_MASK_GROUND : 2,
+    PHYS_MASK_CURLING : 4,
+    PHYS_MASK_NET : 8,
+    PHYS_MASK_ENNEMIES : 16,
+});
 
 class GlobalManager {
 

@@ -1,12 +1,13 @@
-import { Matrix, Mesh, MeshBuilder, Physics6DoFConstraint, PhysicsAggregate, PhysicsConstraintAxis, PhysicsMotionType, PhysicsShapeType, Quaternion, SceneLoader, TransformNode, Vector3 } from "@babylonjs/core";
+import { Color3, Matrix, Mesh, MeshBuilder, Physics6DoFConstraint, PhysicsAggregate, PhysicsConstraintAxis, PhysicsMotionType, PhysicsRaycastResult, PhysicsShapeType, Quaternion, Ray, RayHelper, Scalar, SceneLoader, TransformNode, Vector3 } from "@babylonjs/core";
 
 import girlModelUrl from "../assets/models/girl1.glb";
-import { GlobalManager } from "./globalmanager";
+import { GlobalManager, PhysMasks } from "./globalmanager";
 import { SoundManager } from "./soundmanager";
+import { InputController } from "./inputcontroller";
 
 const USE_FORCES = true;
 let RUNNING_SPEED = 8;
-let JUMP_IMPULSE = 10;
+let JUMP_IMPULSE = 6;
 const PLAYER_HEIGHT = 1.7;
 const PLAYER_RADIUS = 0.4;
 
@@ -32,6 +33,8 @@ class Player {
     runAnim;
     walkAnim;
 
+    moveDir = new Vector3(0, 0, 0);
+
     x = 0.0;
     y = 0.0;
     z = 0.0;
@@ -48,9 +51,6 @@ class Player {
         this.transform = new MeshBuilder.CreateCapsule("player", { height: PLAYER_HEIGHT, radius: PLAYER_RADIUS }, GlobalManager.scene);
         this.transform.visibility = 0.0;
         this.transform.position = new Vector3(this.x, this.y, this.z);
-        if (USE_FORCES) {
-            RUNNING_SPEED *= 2;
-        }
     }
 
     async init() {
@@ -73,13 +73,15 @@ class Player {
             mass: 1,
             inertiaOrientation: new Quaternion(0, 0, 0, 1)
         });
+
+        //On annule tous les frottements, on laisse le IF pour penser qu'on peut changer suivant le contexte
         if (USE_FORCES) {
-            this.capsuleAggregate.body.setLinearDamping(0.8);
-            this.capsuleAggregate.body.setAngularDamping(10.0);
+            this.capsuleAggregate.body.setLinearDamping(0.0);
+            this.capsuleAggregate.body.setAngularDamping(0.0);
         }
         else {
-            this.capsuleAggregate.body.setLinearDamping(0.5);
-            this.capsuleAggregate.body.setAngularDamping(0.5);
+            this.capsuleAggregate.body.setLinearDamping(0);
+            this.capsuleAggregate.body.setAngularDamping(0.0);
         }
 
         this.gameObject.parent = this.transform;
@@ -91,81 +93,112 @@ class Player {
         this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
     }
 
+    checkGround() {
+        let ret = false;
+
+        var rayOrigin = this.transform.absolutePosition;
+        var ray1Dir = Vector3.Down();
+        var ray1Len = (PLAYER_HEIGHT / 2) + 0.1;
+        var ray1Dest = rayOrigin.add(ray1Dir.scale(ray1Len));
+
+        const raycastResult = GlobalManager.scene.getPhysicsEngine().raycast(rayOrigin, ray1Dest, PhysMasks.PHYS_MASK_GROUND);
+        if (raycastResult.hasHit) {
+            //console.log("Collision at ", raycastResult.hitPointWorld);
+            if (!this.bOnGround)
+                console.log("Grounded");
+            ret = true;
+        }
+/*
+        var ray1 = new Ray(rayOrigin, ray1Dir, ray1Len);
+        var ray1Helper = new RayHelper(ray1);
+        ray1Helper.show(GlobalManager.scene, new Color3(1, 1, 0));
+*/
+
+        return ret;
+    }
+
+    inputMove() {
+        let ret = false;
+        const axis = InputController.getAxisVectorP1();
+
+        if (axis.length() < 0.01) {
+            this.moveDir.setAll(0);            
+        }
+        else {
+            this.moveDir.x = axis.x * RUNNING_SPEED;
+            this.moveDir.y = 0;
+            this.moveDir.z = axis.y * RUNNING_SPEED;
+            ret = true;
+        }
+        return ret;
+    }
     //Pour le moment on passe les events clavier ici, on utilisera un InputManager plus tard
-    update(inputMap, actions, delta) {
-        let currentVelocity = this.capsuleAggregate.body.getLinearVelocity();
+    update(delta) {
+        let bWasOnGround = this.bOnGround;
+        this.bOnGround = this.checkGround();
 
-        //Inputs
-        if (inputMap["KeyA"])
-            this.speedX = -RUNNING_SPEED;
-        else if (inputMap["KeyD"])
-            this.speedX = RUNNING_SPEED;
-        else {
-            //Frottements
-            if (USE_FORCES)
-                this.speedX = 0;
-            else
-                this.speedX += (-12.0 * this.speedX * delta);
-        }
+        let bWasWalking = this.bWalking;
+        this.bWalking = this.inputMove();
 
-        if (inputMap["KeyW"])
-            this.speedZ = RUNNING_SPEED;
-        else if (inputMap["KeyS"])
-            this.speedZ = -RUNNING_SPEED;
-        else {
-            //Frottements
-            if (USE_FORCES)
-                this.speedZ = 0;
-            else
-                this.speedZ += (-12.0 * this.speedZ * delta);
-        }
 
-        if (USE_FORCES) {
-
-            if (actions["Space"] && currentVelocity.y == 0) {
-                SoundManager.playSound(0);
-                //Avec la physique il va falloir tester notre distance par rapport au sol (raycast) et si on chute ou pas
-                // pour l'instant on autorise le saut
-                this.capsuleAggregate.body.applyImpulse(new Vector3(0, JUMP_IMPULSE, 0), Vector3.Zero());
+        if (this.bOnGround) {
+            //Inputs
+            if (!this.moveDir.equals(Vector3.Zero())) {
+                this.speedX = this.moveDir.x;
+                this.speedZ = this.moveDir.z;
             }
-
-            //Position update
-            this.capsuleAggregate.body.applyForce(new Vector3(this.speedX, 0, this.speedZ), Vector3.Zero());
-
+            else {
+               if (!USE_FORCES) {
+                    this.speedX = Scalar.MoveTowards(this.speedX, 0, delta/3);
+                    this.speedZ = Scalar.MoveTowards(this.speedZ, 0, delta/3);
+               }
+            }
         }
         else {
-            let impulseY = 0;
-            if (actions["Space"] && currentVelocity.y == 0) {
-                impulseY = JUMP_IMPULSE;
+            //Inputs
+            if (!this.moveDir.equals(Vector3.Zero())) {
+                this.speedX = this.moveDir.x/1.5;
+                this.speedZ = this.moveDir.z/1.5;
             }
+            else {
+                if (!USE_FORCES) {
+                    this.speedX = Scalar.MoveTowards(this.speedX, 0, delta/3);
+                    this.speedZ = Scalar.MoveTowards(this.speedZ, 0, delta/3);
+               }
+            }
+        }
 
-            //Gravity  + saut
-            currentVelocity = new Vector3(this.speedX, impulseY + currentVelocity.y, this.speedZ);
 
-            //Position update
-            this.capsuleAggregate.body.setLinearVelocity(currentVelocity);
+        if (InputController.actions["Space"] && this.bOnGround) {
+            SoundManager.playSound(0);
+            this.capsuleAggregate.body.applyImpulse(new Vector3(0, JUMP_IMPULSE, 0), Vector3.Zero());
         }
         
-
-        //Orientation
-        let directionXZ = new Vector3(this.speedX, 0, this.speedZ);
-
-
+        //On applique tout
+        if (USE_FORCES) {
+            this.moveDir.set(this.speedX, 0, this.speedZ);
+            this.capsuleAggregate.body.applyForce(this.moveDir, Vector3.Zero());
+        }
+        else {
+            //Gravity  + deplacement + saut
+            this.moveDir.set(this.speedX, this.capsuleAggregate.body.getLinearVelocity().y, this.speedZ);
+            this.capsuleAggregate.body.setLinearVelocity(this.moveDir);
+        }        
+        
         //Animations
-        if (directionXZ.length() > 2.5) {
-
+        if (this.bWalking) {
+            //Orientation
+            let directionXZ = new Vector3(this.speedX, 0, this.speedZ);
             this.gameObject.lookAt(directionXZ.normalize());
 
-            if (!this.bWalking) {
+            if (!bWasWalking) {
                 this.runAnim.start(true, 1.0, this.runAnim.from, this.runAnim.to, false);
-                this.bWalking = true;
             }
         }
         else {
-            if (this.bWalking) {
+            if (bWasWalking) {
                 this.runAnim.stop();
                 this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
-                this.bWalking = false;
             }
         }
     }
