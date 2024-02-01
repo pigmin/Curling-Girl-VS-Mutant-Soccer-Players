@@ -29,10 +29,20 @@ class CurlingStone {
         this.meshAggregate = new PhysicsAggregate(this.gameObject, PhysicsShapeType.CONVEX_HULL, { mass: .25, friction: 0.05, restitution: 0.3 });
     }
 
-    update(delta)  {
+    update(delta) {
 
     }
 
+    resetToCenter() {
+        this.meshAggregate.body.disablePreStep = false;
+        // The position where you want to move the body to
+        this.meshAggregate.body.transformNode.position.set(this.x, this.y, this.z);
+        this.meshAggregate.body.setLinearVelocity(Vector3.Zero());
+        GlobalManager.scene.onAfterRenderObservable.addOnce(() => {
+            // Turn disablePreStep on again for maximum performance
+            this.meshAggregate.body.disablePreStep = true;
+        });
+    }
 }
 
 export default CurlingStone;

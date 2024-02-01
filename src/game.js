@@ -187,6 +187,7 @@ class Game {
                     GlobalManager.gameState = States.STATE_NEW_LEVEL;
                     break;
                 case States.STATE_NEW_LEVEL:
+                    this.#curlingStone.resetToCenter();
                     GlobalManager.gameState = States.STATE_LEVEL_READY;
                     break;
                 case States.STATE_LEVEL_READY:

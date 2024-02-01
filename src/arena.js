@@ -1,7 +1,7 @@
 import { ActionManager, Color3, ExecuteCodeAction, MeshBuilder, PhysicsAggregate, PhysicsMotionType, PhysicsShape, PhysicsShapeType, SceneLoader, StandardMaterial, TransformNode, Vector3 } from "@babylonjs/core";
 
 import arenaModelUrl from "../assets/models/ice_hockey.glb";
-import { GlobalManager, PhysMasks } from "./globalmanager";
+import { GlobalManager, PhysMasks, States } from "./globalmanager";
 
 class Arena {
 
@@ -76,7 +76,7 @@ class Arena {
                     parameter: culingMesh,
                 }, 
                 (actionEv) => {
-                    console.log(actionEv);
+                    GlobalManager.goalZoneA();
                 }
             )
         );
@@ -88,7 +88,7 @@ class Arena {
                     parameter: culingMesh,
                 }, 
                 (actionEv) => {
-                    console.log(actionEv);
+                    GlobalManager.goalZoneB();
                 }
             )
         );        

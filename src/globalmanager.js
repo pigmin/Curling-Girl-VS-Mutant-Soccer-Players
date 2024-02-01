@@ -1,3 +1,5 @@
+import { SoundManager } from "./soundmanager";
+
 export const States = Object.freeze({
     STATE_NONE: 0,
     STATE_INIT: 10,
@@ -11,6 +13,8 @@ export const States = Object.freeze({
     STATE_LEVEL_READY: 55,
     STATE_RUNNING: 60,
     STATE_PAUSE: 70,
+    STATE_BUT_A : 75,
+    STATE_BUT_B : 76,
     STATE_LOOSE: 80,
     STATE_GAME_OVER: 90,
     STATE_END: 100,
@@ -34,6 +38,9 @@ class GlobalManager {
     gameState = States.STATE_NONE;
 
     shadowGenerators = [];
+
+    scoreA = 0;
+    scoreB = 0;
 
     static get instance() {
         return (globalThis[Symbol.for(`PF_${GlobalManager.name}`)] ||= new this());
@@ -63,6 +70,16 @@ class GlobalManager {
         }
     }
 
+    goalZoneA() {
+        SoundManager.playSound(0);
+        this.scoreA++;
+        this.gameState = States.STATE_NEW_LEVEL;
+    }
+    goalZoneB() {
+        SoundManager.playSound(0);
+        this.scoreB++;
+        this.gameState = States.STATE_NEW_LEVEL;
+    }
     
 }
 
