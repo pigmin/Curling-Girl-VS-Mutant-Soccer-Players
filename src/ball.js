@@ -1,9 +1,9 @@
 import { PhysicsAggregate, PhysicsShapeType, Scene, SceneLoader, Vector3 } from "@babylonjs/core";
 
-import curlingStoneModelUrl from "../assets/models/curling_stone.glb";
+import ballModelUrl from "../assets/models/ball.glb";
 import { GlobalManager } from "./globalmanager";
 
-class CurlingStone {
+class Ball {
 
     x;
     y;
@@ -19,15 +19,14 @@ class CurlingStone {
     }
 
     async init() {
-        const result = await SceneLoader.ImportMeshAsync("", "", curlingStoneModelUrl, GlobalManager.scene);
+        const result = await SceneLoader.ImportMeshAsync("", "", ballModelUrl, GlobalManager.scene);
         this.gameObject = result.meshes[1];
         this.gameObject.parent = null;
         result.meshes[0].dispose();
 
-        this.gameObject.scaling.scaleInPlace(0.015);
-        this.gameObject.rotation = new Vector3(3*Math.PI/2, 0, 0);
+        this.gameObject.scaling.scaleInPlace(1.5);
         this.gameObject.position = new Vector3(this.x, this.y, this.z);
-        this.meshAggregate = new PhysicsAggregate(this.gameObject, PhysicsShapeType.CONVEX_HULL, { mass: .25, friction: 0.05, restitution: 0.3 });
+        this.meshAggregate = new PhysicsAggregate(this.gameObject, PhysicsShapeType.SPHERE, { mass: .05, friction: 0.2, restitution: 0.8 });
     }
 
     update(delta) {
@@ -46,4 +45,4 @@ class CurlingStone {
     }
 }
 
-export default CurlingStone;
+export default Ball;

@@ -1,4 +1,4 @@
-import { ActionManager, Color3, ExecuteCodeAction, MeshBuilder, PhysicsAggregate, PhysicsMotionType, PhysicsShape, PhysicsShapeType, SceneLoader, StandardMaterial, TransformNode, Vector3 } from "@babylonjs/core";
+import { ActionManager, Color3, Engine, ExecuteCodeAction, Material, MeshBuilder, PhysicsAggregate, PhysicsMotionType, PhysicsShape, PhysicsShapeType, SceneLoader, StandardMaterial, TransformNode, Vector3 } from "@babylonjs/core";
 
 import arenaModelUrl from "../assets/models/ice_hockey.glb";
 import { GlobalManager, PhysMasks, States } from "./globalmanager";
@@ -15,14 +15,13 @@ class Arena {
     zoneA;
     zoneB;
 
+    Boards_primitive1;
+
 
     constructor(x, y, z) {
         this.x = x || 0;
         this.y = y || 0;
         this.z = z || 0;
-
-        this.gameObject = new TransformNode("arena", GlobalManager.scene);
-        this.gameObject.position = new Vector3(x, y, z);
     }
 
     async init() {
@@ -41,7 +40,21 @@ class Arena {
 
             childMesh.refreshBoundingInfo(true);
             if (childMesh.getTotalVertices() > 0) {
-                const meshAggregate = new PhysicsAggregate(childMesh, PhysicsShapeType.MESH, {mass:0, friction: 0.4, restitution : 0.1});
+                let meshAggregate;
+                //On teste le nom
+                if (childMesh.name == "Boards_primitive2")
+                    meshAggregate = new PhysicsAggregate(childMesh, PhysicsShapeType.MESH, {mass:0, friction: 0.7, restitution : 0.5});
+                else
+                    meshAggregate = new PhysicsAggregate(childMesh, PhysicsShapeType.MESH, {mass:0, friction: 0.4, restitution : 0.1});
+
+                //FX transparent
+                if (childMesh.name == "Boards_primitive1") {
+                    this.Boards_primitive1 = childMesh;
+                    let mat = this.Boards_primitive1.material;
+                    mat.transparencyMode = Material.MATERIAL_ALPHABLEND;
+                    mat.alphaMode = Engine.ALPHA_COMBINE;
+                }
+
                 meshAggregate.body.setMotionType(PhysicsMotionType.STATIC);
                 meshAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
                 childMesh.receiveShadows = true;
@@ -67,13 +80,13 @@ class Arena {
 
     }
 
-    setCollisionZones(culingMesh) {
+    setCollisionZones(curlingMesh) {
         this.zoneA.actionManager = new ActionManager(GlobalManager.scene);
         this.zoneA.actionManager.registerAction(
             new ExecuteCodeAction(
                 {
                     trigger: ActionManager.OnIntersectionEnterTrigger, 
-                    parameter: culingMesh,
+                    parameter: curlingMesh,
                 }, 
                 (actionEv) => {
                     GlobalManager.goalZoneA();
@@ -85,7 +98,7 @@ class Arena {
             new ExecuteCodeAction(
                 {
                     trigger: ActionManager.OnIntersectionEnterTrigger, 
-                    parameter: culingMesh,
+                    parameter: curlingMesh,
                 }, 
                 (actionEv) => {
                     GlobalManager.goalZoneB();

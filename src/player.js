@@ -61,11 +61,10 @@ class Player {
         this.gameObject.position = new Vector3(0, -PLAYER_HEIGHT / 2, 0);
         this.gameObject.rotate(Vector3.UpReadOnly, Math.PI);
         this.gameObject.bakeCurrentTransformIntoVertices();
-        this.gameObject.checkCollisions = true;
 
         this.capsuleAggregate = new PhysicsAggregate(this.transform, PhysicsShapeType.CAPSULE, { mass: 1, friction: 1, restitution: 0.1 }, GlobalManager.scene);
         this.capsuleAggregate.body.setMotionType(PhysicsMotionType.DYNAMIC);
-
+        
         //On bloque les rotations avec cette méthode, à vérifier.
         this.capsuleAggregate.body.setMassProperties({
             inertia: new Vector3(0, 0, 0),
@@ -125,9 +124,9 @@ class Player {
             this.moveDir.setAll(0);            
         }
         else {
-            this.moveDir.x = axis.x * RUNNING_SPEED;
+            this.moveDir.x = axis.y * RUNNING_SPEED;
             this.moveDir.y = 0;
-            this.moveDir.z = axis.y * RUNNING_SPEED;
+            this.moveDir.z = -axis.x * RUNNING_SPEED;
             ret = true;
         }
         return ret;

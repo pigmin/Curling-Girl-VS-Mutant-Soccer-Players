@@ -36,11 +36,14 @@ class GlobalManager {
     camera;
 
     gameState = States.STATE_NONE;
+bPause = false;
 
     shadowGenerators = [];
 
     scoreA = 0;
     scoreB = 0;
+
+    timeToDo = 0;
 
     static get instance() {
         return (globalThis[Symbol.for(`PF_${GlobalManager.name}`)] ||= new this());
@@ -73,12 +76,13 @@ class GlobalManager {
     goalZoneA() {
         SoundManager.playSound(0);
         this.scoreA++;
-        this.gameState = States.STATE_NEW_LEVEL;
+        this.gameState = States.STATE_BALL_CENTER;
     }
+
     goalZoneB() {
         SoundManager.playSound(0);
         this.scoreB++;
-        this.gameState = States.STATE_NEW_LEVEL;
+        this.gameState = States.STATE_BALL_CENTER;
     }
     
 }

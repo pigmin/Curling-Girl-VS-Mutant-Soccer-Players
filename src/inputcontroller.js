@@ -43,6 +43,7 @@ class InputController {
 
             gamepad.onButtonDownObservable.add((button, state) => {
                 //Button has been pressed
+                this.actions["Space"] = true;
                 console.log(button + " pressed");
             });
             gamepad.onButtonUpObservable.add((button, state) => {

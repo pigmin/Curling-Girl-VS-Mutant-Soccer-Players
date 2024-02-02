@@ -1,4 +1,4 @@
-import { ActionManager, Color3, Color4, Engine, FollowCamera, FreeCamera, HavokPlugin, HemisphericLight, InterpolateValueAction, KeyboardEventTypes, Mesh, MeshBuilder, ParticleSystem, PhysicsAggregate, PhysicsHelper, PhysicsMotionType, PhysicsRadialImpulseFalloff, PhysicsShapeType, Scene, SetValueAction, ShadowGenerator, SpotLight, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
+import { ActionManager, Color3, Color4, Engine, FollowCamera, FreeCamera, GlowLayer, HavokPlugin, HemisphericLight, InterpolateValueAction, KeyboardEventTypes, Mesh, MeshBuilder, ParticleSystem, PhysicsAggregate, PhysicsHelper, PhysicsMotionType, PhysicsRadialImpulseFalloff, PhysicsShapeType, Scalar, Scene, SetValueAction, ShadowGenerator, SpotLight, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
 import { Inspector } from '@babylonjs/inspector';
 import HavokPhysics from "@babylonjs/havok";
 
@@ -10,17 +10,22 @@ import CurlingStone from "./curlingStone";
 import { GlobalManager, States } from "./globalmanager";
 import { InputController } from "./inputcontroller";
 import { SoundManager } from "./soundmanager";
+import MenuUI from "./menuUi";
+import GameUI from "./gameUi";
+import Ball from "./ball";
 
 class Game {
 
     #canvas;
     #engine;
     #havokInstance;
-
+    
     #gameCamera;
-
+    
     #bInspector = false;
-
+    
+    #menuUI;
+    #gameUI;
     #elevator;
     #elevatorAggregate;
 
@@ -32,6 +37,7 @@ class Game {
     #arena;
     #player;
     #curlingStone;
+    #oneBall;
 
     constructor(canvas, engine) {
         this.#canvas = canvas;
@@ -53,14 +59,19 @@ class Game {
         // enable physics in the scene with a gravity
         GlobalManager.scene.enablePhysics(new Vector3(0, -9.81, 0), hk);
 
-        this.#gameCamera = new FollowCamera("camera1", Vector3.Zero(), GlobalManager.scene);
-        this.#gameCamera.heightOffset = 4;
-        this.#gameCamera.radius = -8;
-        this.#gameCamera.maxCameraSpeed = 1;
-        this.#gameCamera.cameraAcceleration = 0.025;
-        this.#gameCamera.rotationOffset = 0;
-        //this.#gameCamera.setTarget(Vector3.Zero());
-        //this.#gameCamera.attachControl(this.#canvas, true);
+        GlobalManager.camera = new FollowCamera("camera1", Vector3.Zero(), GlobalManager.scene);
+        GlobalManager.camera.heightOffset = 8;
+        GlobalManager.camera.radius = -16;
+        GlobalManager.camera.maxCameraSpeed = 1.5;
+        GlobalManager.camera.cameraAcceleration = 0.035;
+        GlobalManager.camera.rotationOffset = 90;
+        
+       /* GlobalManager.glowLayer = new GlowLayer("glowLayer", GlobalManager.scene);
+        GlobalManager.glowLayer.intensity = 1.2;*/
+
+        
+        //GlobalManager.camera.setTarget(Vector3.Zero());
+        //GlobalManager.camera.attachControl(this.#canvas, true);
 
         const light = new HemisphericLight("light", new Vector3(0, 1, 0), GlobalManager.scene);
         light.intensity = 0.4;
@@ -98,7 +109,7 @@ class Game {
         elevator.position = new Vector3(30, 0, 30);
         this.#elevator = elevator;
 
-        const ground = MeshBuilder.CreateGround("ground", { width: 640, height: 640, subdivisions: 128 }, GlobalManager.scene);
+        const ground = MeshBuilder.CreateGround("ground", { width: 320, height: 320, subdivisions: 128 }, GlobalManager.scene);
         ground.position = new Vector3(0, -0.1, 0);
 
         const matGround = new StandardMaterial("boue", GlobalManager.scene);
@@ -148,7 +159,7 @@ class Game {
 
         this.#player = new Player(3, 2, 3);
         await this.#player.init();
-        this.#gameCamera.lockedTarget = this.#player.transform;
+        GlobalManager.camera.lockedTarget = this.#player.transform;
         GlobalManager.addShadowCaster(this.#player.gameObject, true);
 
         this.#curlingStone = new CurlingStone(0, 1, 0, this.scene);
@@ -159,6 +170,20 @@ class Game {
         await this.#arena.init();
         GlobalManager.addShadowCaster(this.#arena.gameObject, true);
         this.#arena.setCollisionZones(this.#curlingStone.gameObject);
+
+        
+        this.#oneBall = new Ball(5, 8, 0, this.scene);
+        await this.#oneBall.init();
+        GlobalManager.addShadowCaster(this.#oneBall.gameObject);
+
+
+        this.#menuUI = new MenuUI();
+        await this.#menuUI.init();
+        this.#menuUI.show(true);
+
+        this.#gameUI = new GameUI();
+        await this.#gameUI.init();
+        this.#gameUI.show(false);
 
         SoundManager.playMusic(SoundManager.Musics.START_MUSIC);
     }
@@ -174,6 +199,7 @@ class Game {
         this.#engine.runRenderLoop(() => {
 
             let delta = this.#engine.getDeltaTime() / 1000.0;
+            let now = performance.now();
 
             InputController.update(delta);
             SoundManager.update(delta);
@@ -181,14 +207,24 @@ class Game {
 
             switch (GlobalManager.gameState) {
                 case States.STATE_MENU:
-                    GlobalManager.gameState = States.STATE_START_GAME;
+                    //GlobalManager.gameState = States.STATE_START_GAME;
                     break;
                 case States.STATE_START_GAME:
+                    this.#menuUI.show(false);
+                    this.#gameUI.show(true);
+
+                    GlobalManager.gameState = States.STATE_LEVEL_READY;
+                    break;
+                case States.STATE_BALL_CENTER:
                     GlobalManager.gameState = States.STATE_NEW_LEVEL;
+                    GlobalManager.timeToDo = now + 3000;
                     break;
                 case States.STATE_NEW_LEVEL:
-                    this.#curlingStone.resetToCenter();
-                    GlobalManager.gameState = States.STATE_LEVEL_READY;
+                    if (now > GlobalManager.timeToDo)
+                    {
+                        this.#curlingStone.resetToCenter();
+                        GlobalManager.gameState = States.STATE_LEVEL_READY;
+                    }
                     break;
                 case States.STATE_LEVEL_READY:
                     GlobalManager.gameState = States.STATE_RUNNING;
@@ -217,12 +253,18 @@ class Game {
 
     updateGame(delta) {
 
-
+        if (this.#curlingStone.gameObject.absolutePosition.x < -10) {
+            
+            this.#arena.Boards_primitive1.material.alpha = Scalar.Lerp(1, 0.5, (this.#curlingStone.gameObject.absolutePosition.x / -14));
+        }
+        else 
+            this.#arena.Boards_primitive1.material.alpha = 1;
 
 
         this.#player.update(delta);
 
         this.#curlingStone.update(delta);
+        this.#oneBall.update(delta);
 
         this.#arena.update(delta);
 
