@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "homepage": "https://pigmin.github.io/Curling-Girl-VS-Mutant-Soccer-Players/",
   "scripts": {
     "start": "npx webpack serve --config webpack.dev.js",
     "start:prod": "webpack serve --config webpack.prod.js",
@@ -14,14 +15,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pigmin/Curling-Girl-VS-Mutant-Soccer-Players7.git"
+    "url": "git+https://github.com/pigmin/Curling-Girl-VS-Mutant-Soccer-Players.git"
   },
   "author": "oar",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/pigmin/Curling-Girl-VS-Mutant-Soccer-Players/issues"
   },
-  "homepage": "https://github.com/pigmin/Curling-Girl-VS-Mutant-Soccer-Players#readme",
   "devDependencies": {
     "@babylonjs/core": "^6.40.0",
     "@babylonjs/gui": "^6.40.0",
