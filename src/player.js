@@ -33,7 +33,9 @@ class Player {
     runAnim;
     walkAnim;
 
-    moveDir = new Vector3(0, 0, 0);
+    moveDir = Vector3.Zero();
+    jumpImpulse = new Vector3(0, JUMP_IMPULSE, 0);
+    directionXZ = Vector3.Zero();
 
     x = 0.0;
     y = 0.0;
@@ -170,13 +172,13 @@ class Player {
 
         if (InputController.actions["Space"] && this.bOnGround) {
             SoundManager.playSound(0);
-            this.capsuleAggregate.body.applyImpulse(new Vector3(0, JUMP_IMPULSE, 0), Vector3.Zero());
+            this.capsuleAggregate.body.applyImpulse(this.jumpImpulse, this.capsuleAggregate.body.transformNode.position);
         }
         
         //On applique tout
         if (USE_FORCES) {
             this.moveDir.set(this.speedX, 0, this.speedZ);
-            this.capsuleAggregate.body.applyForce(this.moveDir, Vector3.Zero());
+            this.capsuleAggregate.body.applyForce(this.moveDir, this.capsuleAggregate.body.transformNode.position);
         }
         else {
             //Gravity  + deplacement + saut
@@ -187,8 +189,8 @@ class Player {
         //Animations
         if (this.bWalking) {
             //Orientation
-            let directionXZ = new Vector3(this.speedX, 0, this.speedZ);
-            this.gameObject.lookAt(directionXZ.normalize());
+            this.directionXZ.set(this.speedX, 0, this.speedZ);
+            this.gameObject.lookAt(this.directionXZ.normalize());
 
             if (!bWasWalking) {
                 this.runAnim.start(true, 1.0, this.runAnim.from, this.runAnim.to, false);

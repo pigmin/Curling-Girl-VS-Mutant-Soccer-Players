@@ -42,7 +42,11 @@ class Arena {
             if (childMesh.getTotalVertices() > 0) {
                 let meshAggregate;
                 //On teste le nom
-                if (childMesh.name == "Boards_primitive2")
+                if (childMesh.name == "Boards_primitive3") {
+                    childMesh.dispose();
+                }
+                else {
+                    if (childMesh.name == "Boards_primitive2")
                     meshAggregate = new PhysicsAggregate(childMesh, PhysicsShapeType.MESH, {mass:0, friction: 0.7, restitution : 0.5});
                 else
                     meshAggregate = new PhysicsAggregate(childMesh, PhysicsShapeType.MESH, {mass:0, friction: 0.4, restitution : 0.1});
@@ -58,6 +62,7 @@ class Arena {
                 meshAggregate.body.setMotionType(PhysicsMotionType.STATIC);
                 meshAggregate.shape.filterMembershipMask = PhysMasks.PHYS_MASK_GROUND;
                 childMesh.receiveShadows = true;
+                }
            }
         }
 

@@ -1,9 +1,12 @@
-import { ActionManager, Color3, Color4, Engine, FollowCamera, FreeCamera, GlowLayer, HavokPlugin, HemisphericLight, InterpolateValueAction, KeyboardEventTypes, Mesh, MeshBuilder, ParticleSystem, PhysicsAggregate, PhysicsHelper, PhysicsMotionType, PhysicsRadialImpulseFalloff, PhysicsShapeType, Scalar, Scene, SetValueAction, ShadowGenerator, SpotLight, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
+import { AbstractMesh, ActionManager, BoxBuilder, Color3, Color4, Engine, FollowCamera, FreeCamera, GlowLayer, HavokPlugin, HemisphericLight, InterpolateValueAction, KeyboardEventTypes, Matrix, Mesh, MeshBuilder, ParticleSystem, PhysicsAggregate, PhysicsHelper, PhysicsMotionType, PhysicsRadialImpulseFalloff, PhysicsShapeType, RenderTargetTexture, Scalar, Scene, SceneLoader, SetValueAction, ShadowGenerator, SpotLight, StandardMaterial, Texture, UniversalCamera, Vector3 } from "@babylonjs/core";
 import { Inspector } from '@babylonjs/inspector';
 import HavokPhysics from "@babylonjs/havok";
 
 import floorUrl from "../assets/textures/floor.png";
 import floorBumpUrl from "../assets/textures/floor_bump.png";
+
+import tvModelUrl from "../assets/models/monitor.glb";
+
 import Player from "./player";
 import Arena from "./arena";
 import CurlingStone from "./curlingStone";
@@ -61,7 +64,7 @@ class Game {
 
         GlobalManager.camera = new FollowCamera("camera1", Vector3.Zero(), GlobalManager.scene);
         GlobalManager.camera.heightOffset = 8;
-        GlobalManager.camera.radius = -16;
+        GlobalManager.camera.radius = -12;
         GlobalManager.camera.maxCameraSpeed = 1.5;
         GlobalManager.camera.cameraAcceleration = 0.035;
         GlobalManager.camera.rotationOffset = 90;
@@ -140,6 +143,63 @@ class Game {
         this.#elevatorAggregate.body.setMotionType(PhysicsMotionType.ANIMATED);
     }
 
+    async initRenderToTexture() {
+        var renderTarget = new RenderTargetTexture("depth", 512, GlobalManager.scene);
+        GlobalManager.scene.customRenderTargets.push(renderTarget);      
+        let newCamera = new FollowCamera("camera2", new Vector3(0, 10, 0), GlobalManager.scene);
+        newCamera.heightOffset = 20;
+        newCamera.radius = 5;
+        newCamera.maxCameraSpeed = 1.5;
+        newCamera.cameraAcceleration = 0.035;
+        newCamera.rotationOffset = 90;
+        
+
+        newCamera.lockedTarget = this.#curlingStone.gameObject;
+        //newCamera.rotation.z = Math.PI/2;
+        newCamera.fov = 0.25;
+        
+        for (let i = 0; i < GlobalManager.scene.meshes.length; i++){
+            if (GlobalManager.scene.meshes[i].getTotalVertices() > 0) 
+                renderTarget.renderList.push(GlobalManager.scene.meshes[i]);
+        }
+        var rttMaterial = new StandardMaterial("RTT material", GlobalManager.scene);
+        rttMaterial.emissiveTexture = renderTarget;
+        //rttMaterial.diffuseTexture = renderTarget;
+        rttMaterial.disableLighting = true;
+
+        //newCamera.customRenderTargets = renderTarget;
+        renderTarget.activeCamera = newCamera;
+        renderTarget.uOffset = 0.5;
+        renderTarget.vOffset = 0.2;
+        renderTarget.uScale = 4.5;
+        renderTarget.vScale = 1.8;
+        const result = await SceneLoader.ImportMeshAsync("", "", tvModelUrl, GlobalManager.scene);
+        let tvMesh = result.meshes[0];
+        tvMesh.scaling.set(1, 3, 1);
+        tvMesh.name = "TV";
+        tvMesh.rotation = new Vector3(Math.PI/2, 0, 0);
+        tvMesh.bakeCurrentTransformIntoVertices();
+        tvMesh.rotation = Vector3.Zero();
+        tvMesh.position = new Vector3(15, 5, 0);
+        for (let subMesh of tvMesh.getChildMeshes()) {
+            if (subMesh.name == "SM_large_window_primitive0") {
+                subMesh.material = rttMaterial;
+
+                        
+        //subMesh.scaling.x = 1.0 / GlobalManager.engine.getAspectRatio(GlobalManager.scene.activeCamera);
+                break;
+            }
+        }
+       /* let plane = MeshBuilder.CreatePlane("", {width:1.6, height:0.9});
+        plane.billboardMode = AbstractMesh.BILLBOARDMODE_ALL;
+        plane.scaling.y = 1.0 / GlobalManager.engine.getAspectRatio(GlobalManager.scene.activeCamera);
+        plane.position.y = 4;
+        plane.material = rttMaterial;*/
+
+
+        
+    }
+
     async getInitializedHavok() {
         return await HavokPhysics();
     }
@@ -176,6 +236,7 @@ class Game {
         await this.#oneBall.init();
         GlobalManager.addShadowCaster(this.#oneBall.gameObject);
 
+        await this.initRenderToTexture();
 
         this.#menuUI = new MenuUI();
         await this.#menuUI.init();
@@ -240,7 +301,7 @@ class Game {
                 this.#bInspector = !this.#bInspector;
 
                 if (this.#bInspector)
-                    Inspector.Show();
+                    Inspector.Show(GlobalManager.scene, { embedMode : false})
                 else
                     Inspector.Hide();
             }
